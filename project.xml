@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	<meta title="Learning_thing" package="com.example.Learning_thing" version="1.0.0" company="My Company"/>
+	<app main="Main"/>
+	
+	<window allow-high-dpi="true"/>
+	<window width="960" height="640"/>
+	<window fps="60"/>
+	<window fps="0" if="html5"/>
+	
+	<source path="src"/>
+	<assets path="assets" />
+	
+	<haxelib name="openfl"/>
+	<haxelib name="actuate"/>
+	<haxelib name="feathersui"/>
+	<haxelib name="linc_luajit" />
+
+	<icon path="assets/icons/icon.svg"/>
+</project>
