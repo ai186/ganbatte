@@ -1,5 +1,11 @@
 package luaimpl;
 
+import lime.text.Font;
+import feathers.controls.TextArea;
+import openfl.text.TextFormat;
+import lime.app.Application;
+import feathers.events.TriggerEvent;
+import openfl.display.Bitmap;
 import haxe.macro.Type.Ref;
 import screens.Screen;
 import feathers.controls.Button;
@@ -21,6 +27,10 @@ class LuaScript
 	public var screen:Screen;
 
 	private var references:Map<Int, Dynamic> = [];
+	public var buttons:Map<Button, Int> = [];
+
+	private var REFERENCE_NUMBER:UInt = 0;
+	private var fns:CoreFunctionsLua;
 
 	public function new(?path:String, ?screen:Screen)
 	{
@@ -33,15 +43,37 @@ class LuaScript
 		if (path == null)
 			return;
 
+		fns = new CoreFunctionsLua(this);
+
 		set("lua_version", Lua.version());
 		set("luaJIT_version", Lua.versionJIT());
 		set("haxe_version", haxe.macro.Compiler.getDefine("haxe_ver"));
 
+		set("WIDTH", Main.instance.stage.stageWidth);
+		set("HEIGHT", Main.instance.stage.stageHeight);
+
+		// BASE FUNCTIONS
 		set("instantiate", Lua_Instantiate);
 		set("add", Lua_Add);
 		set("remove", Lua_Remove);
 		set("getProperty", Lua_GetProperty);
 		set("setProperty", Lua_SetProperty);
+		set("setField", Lua_SetFieldUsingID);
+		set("setReference", Lua_SetReference);
+		set("delReference", Lua_DelReference);
+
+	// COOL functions
+
+		set("getX", (id:Int) -> {
+			return Lua_GetProperty(id, "x");
+		});
+
+		set("getY", (id:Int) -> {
+			return Lua_GetProperty(id, "y");
+		});
+
+		set("createLabel", fns.createLabel);
+		set("createButton", fns.createButton);
 
         run(path);
 	}
@@ -137,20 +169,44 @@ class LuaScript
 
 	// Functions to be used in lua
 
-	function Lua_Instantiate(name:String, id:Int) {
+	// BASE FUNCTIONS
+
+	function Lua_Instantiate(name:String, args:Array<Dynamic>) {
+
+		REFERENCE_NUMBER++;
+
 		switch (name.toLowerCase()) {
 			case 'label':
+				trace("im making lable");
 				var l = new Label();
-				references.set(id, l);
+				references.set(REFERENCE_NUMBER, l);
 			case 'button':
-				var b = new Button();
-				references.set(id, b);
-			case 'test':
-				var z = {xz: {x: 10}};
-				references.set(id, z);
+				var b:Button;
+				b = new Button();
+				b.addEventListener(TriggerEvent.TRIGGER, (e:TriggerEvent) -> {
+					var button = cast (e.target, Button);
+					var id = buttons.get(button);
+					call("onButtonPress", id);
+				});
+				references.set(REFERENCE_NUMBER, b);
+				buttons.set(b, REFERENCE_NUMBER);
+			case 'bitmap':
+				var i = new Bitmap(references.get(args[0]), null, args[1]);
+				references.set(REFERENCE_NUMBER, i);
+			default:
+				var resolvedClass = Type.resolveClass(name);
+				if (resolvedClass != null && Type.getSuperClass(resolvedClass) == DisplayObject) {
+					var object = Type.createInstance(resolvedClass, args);
+					references.set(REFERENCE_NUMBER, object);
+				} else {
+					REFERENCE_NUMBER--;
+				}
 		}
 		
-		return id;
+		return REFERENCE_NUMBER;
+	}
+
+	public function update(dt:Float) {
 	}
 
 	function Lua_Add(id:Int) {
@@ -169,8 +225,7 @@ class LuaScript
 		var splitted = property.split('.');
 		
 		for (i in 0...splitted.length - 1) {
-			trace(object, splitted[i]);
-			object = Reflect.getProperty(object, splitted[i]);
+			object = Reflect.field(object, splitted[i]);
 		}
 
 		return Reflect.getProperty(object, splitted[splitted.length-1]);
@@ -178,16 +233,109 @@ class LuaScript
 
 	function Lua_SetProperty(id:Int, property:String, value:Any)  {
 		if (!property.contains('.'))
-			Reflect.setProperty(references.get(id), property, value);
+			return Reflect.setProperty(references.get(id), property, value);
+		
 
 		var object = references.get(id);
 		var splitted = property.split('.');
 		
 		for (i in 0...splitted.length - 1) {
-			trace(object, splitted[i]);
-			object = Reflect.getProperty(object, splitted[i]);
+			object = Reflect.field(object, splitted[i]);
 		}
 
 		Reflect.setProperty(object, splitted[splitted.length - 1], value);
+	}
+
+	function Lua_SetField(id:Int, field:String, value:Dynamic) {
+		if (!field.contains('.'))
+			Reflect.setField(references.get(id), field, value);
+
+		var object = references.get(id);
+		var splitted = field.split('.');
+
+		for (i in 0...splitted.length - 1) {
+			object = Reflect.field(object, splitted[i]);
+		}
+
+		Reflect.setField(object, splitted[splitted.length - 1], value);
+	}
+
+	function Lua_SetFieldUsingID(id:Int, field:String, id2:Int) {
+		if (!field.contains('.'))
+			Reflect.setField(references.get(id), field, references.get(id2));
+
+		var object = references.get(id);
+		var splitted = field.split('.');
+
+		for (i in 0...splitted.length - 1) {
+			object = Reflect.field(object, splitted[i]);
+		}
+
+		Reflect.setField(object, splitted[splitted.length - 1], references.get(id2));
+	}
+
+	function Lua_SetReference(id:Int, value:Dynamic) {
+		references.set(id, value);
+		return id;
+	}
+
+	function Lua_DelReference(id:Int, value:Dynamic) {
+		references.remove(id);
+		return id;
+	}
+}
+class CoreFunctionsLua {
+
+	private var script:LuaScript;
+
+	public function new(script:LuaScript) {
+		this.script = script;
+	}
+
+	public function createLabel(x:Float, y:Float, text:String, size:Int) {
+		incrID();
+		trace("mkeing lable");
+		var l = new Label(text);
+		l.x = x;
+		l.y = y;
+		l.textFormat = new TextFormat("assets/fonts/IBMPlexSans.ttf", size, 0xff000000);
+		setRef(getID(), l);
+		return getID();
+	}
+
+	public function createButton(x:Float, y:Float, text:String, size:Int) {
+		incrID();
+		var b:Button;
+		b = new Button(text);
+		b.addEventListener(TriggerEvent.TRIGGER, (e:TriggerEvent) -> {
+			var button = cast (e.target, Button);
+			script.call("onButtonPress", script.buttons.get(button));
+		});
+
+
+		b.x = x;
+		b.y = y;
+		b.textFormat = new TextFormat("assets/fonts/IBMPlexSans.ttf", size, 0xff000000);
+
+		@:privateAccess
+		script.buttons.set(b, getID());
+
+		setRef(getID(), b);
+		return getID();
+	}
+
+	inline function setRef(id:Int, v:Dynamic) {
+		@:privateAccess
+		script.references.set(id, v);
+	}
+
+	inline function getID() {
+		@:privateAccess
+		return script.REFERENCE_NUMBER;
+	}
+
+	inline function incrID() {
+		@:privateAccess
+		script.REFERENCE_NUMBER++;
 	}
 }

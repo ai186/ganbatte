@@ -4,6 +4,7 @@ import openfl.display.DisplayObject;
 
 class Group<T:DisplayObject> {
     public var members:Array<T>;
+    public var length(get, never):Int;
 
     public function new() {
         members = [];   
@@ -18,4 +19,7 @@ class Group<T:DisplayObject> {
         members.remove(object);
         return Main.instance.removeChild(object);
     }
+
+    function get_length()
+        return members.length;
 }

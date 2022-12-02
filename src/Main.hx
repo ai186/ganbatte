@@ -1,3 +1,4 @@
+import openfl.events.KeyboardEvent;
 import openfl.utils.Object;
 import openfl.text.StyleSheet;
 import haxe.Timer;
@@ -27,22 +28,25 @@ class Main extends Application {
 	public function new() {
 		super();
 
-		trace(new Label().textFormat, new Label().backgroundSkin);
-		instance = this; //new Label().styleSheet.
+		instance = this;
 
-		// StyleSheet
 		currentScreen = new Screen();
 
 		addEventListener(Event.ENTER_FRAME, onEnterFrame);
-	}
-
-	function switchScreen(s:Screen) {
-		// for (m in currentScreen.m)
-		currentScreen = s;
+		addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+		addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
 	}
 
 	function onEnterFrame(e:Event) {
 		if (currentScreen != null)
 		currentScreen.update(1 / 60);
+	}
+
+	function onKeyDown(e:KeyboardEvent) {
+		currentScreen.onKeyDown(e.keyCode);
+	}
+
+	function onKeyUp(e:KeyboardEvent) {
+		currentScreen.onKeyUp(e.keyCode);
 	}
 }
