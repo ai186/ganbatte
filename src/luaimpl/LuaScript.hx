@@ -1,5 +1,7 @@
 package luaimpl;
 
+import haxe.Timer;
+import screens.LessonScreen;
 import lime.text.Font;
 import feathers.controls.TextArea;
 import openfl.text.TextFormat;
@@ -32,16 +34,13 @@ class LuaScript
 	private var REFERENCE_NUMBER:UInt = 0;
 	private var fns:CoreFunctionsLua;
 
-	public function new(?path:String, ?screen:Screen)
+	public function new(?code:String, ?screen:Screen)
 	{
 		l = LuaL.newstate();
 		LuaL.openlibs(l);
 		Lua.init_callbacks(l);
 
 		this.screen = screen;
-
-		if (path == null)
-			return;
 
 		fns = new CoreFunctionsLua(this);
 
@@ -72,25 +71,27 @@ class LuaScript
 			return Lua_GetProperty(id, "y");
 		});
 
+		set("nextLesson", () -> {
+			LessonScreen.lessonInstance.gotoNextLesson = true;
+		});
+
 		set("createLabel", fns.createLabel);
 		set("createButton", fns.createButton);
 
-        run(path);
+        run(code);
 	}
 
-	public function run(path:String)
+	public function run(?code:String)
 	{
-		if (FileSystem.exists(path))
+		try
 		{
-			try
-			{
-				LuaL.dofile(l, path);
-			}
-			catch (e)
-			{
-				trace('[luaimpl] could not run ' + path + '!');
-			}
+			LuaL.dostring(l, code);
 		}
+		catch (e)
+		{
+			trace('[luaimpl] could not run!');
+		}
+		
 	}
 
 	public function set<T>(key:String, value:T)
@@ -210,11 +211,19 @@ class LuaScript
 	}
 
 	function Lua_Add(id:Int) {
+		try {
 		screen.items.add(references.get(id));
+		} catch (e) {
+			trace("Failed to add item of ID " + id + "! (error: " + e + ")");
+		}
 	}
 
 	function Lua_Remove(id:Int) {
+		try {
 		screen.items.remove(references.get(id));
+		} catch (e) {
+			trace("Failed to remove item of ID " + id + "! (error: " + e + ")");
+		}
 	}
 
 	function Lua_GetProperty(id:Int, property:String) {
@@ -305,6 +314,7 @@ class CoreFunctionsLua {
 
 	public function createButton(x:Float, y:Float, text:String, size:Int) {
 		incrID();
+		trace("button");
 		var b:Button;
 		b = new Button(text);
 		b.addEventListener(TriggerEvent.TRIGGER, (e:TriggerEvent) -> {

@@ -19,6 +19,9 @@ class ZipTools {
         var reader = new Reader(input);
     
         var entries:List<Entry> = reader.read();
-        return [for (e in entries) e];
+        for (e in entries) {
+            Reader.unzip(e);
+        }
+        return entries.iterator();
     }
 }

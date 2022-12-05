@@ -13,28 +13,32 @@ import luaimpl.LuaScript;
 import openfl.display.DisplayObject;
 
 class Screen {
-    public var items:Group<DisplayObject> = new Group<DisplayObject>();
-    public var luaScript:LuaScript;
+
+    public var items:Group<DisplayObject>;
+    public var scripts:Array<LuaScript> = [];
 
     public function new() {
-        luaScript = LessonParser.loadLessonFromFolder('test/', this);
-    };
-    
+        items = new Group<DisplayObject>();
+    }
+
     public function update(dt:Float) {
-        if (luaScript.get("update") != null) {
-            luaScript.call("update", dt);
+        for (script in scripts) {
+            if (script.get("update") != null)
+                script.call("update", dt);
         }
     }
 
     public function onKeyDown(keyCode:Int) {
-        if (luaScript.get("onKeyDown") != null) {
-            luaScript.call("onKeyDown", keyCode);
+        for (script in scripts) {
+            if (script.get("onKeyDown") != null)
+                script.call("onKeyDown", keyCode);
         }
     }
 
     public function onKeyUp(keyCode:Int) {
-        if (luaScript.get("onKeyUp") != null) {
-            luaScript.call("onKeyUp", keyCode);
+        for (script in scripts) {
+            if (script.get("onKeyUp") != null)
+                script.call("onKeyUp", keyCode);
         }
     }
 

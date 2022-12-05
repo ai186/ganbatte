@@ -22,10 +22,11 @@ function onButtonPress(id)
     print(getProperty(id, "text") .. " " .. id)
 end
 
+
 function onCorrect()
     remove(b1);
     remove(b2);
     remove(b3);
     remove(b4);
-    setProperty(label, "text", "Correct!")
+    nextLesson();
 end

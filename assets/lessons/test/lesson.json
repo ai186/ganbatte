@@ -1,3 +1,4 @@
-{
-    "start": "page1.json"
-}
+[
+    {"script": "page_1.lua"},
+    {"script": "page_2.lua"}
+]

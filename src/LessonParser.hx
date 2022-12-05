@@ -1,5 +1,8 @@
 package;
 
+import haxe.zip.Writer;
+import haxe.zip.Reader;
+import haxe.zip.Entry;
 import screens.Screen;
 import luaimpl.LuaScript;
 import lime.utils.Log;
@@ -7,52 +10,44 @@ import sys.FileSystem;
 import sys.io.File;
 import haxe.Json;
 
+using StringTools;
 typedef PageFile = {
     var script:String;
     var nextPage:String;
 };
 
+typedef DirLessonInfo = Array<{script:String}>;
+typedef ZipLessonInfo = {
+    var lessonFile:Array<{script:String}>;
+    var scripts:Array<Entry>;
+}
+
 class LessonParser {
-    public static function loadLessonFromFolder(name:String, screen:Screen) {
-        var LESSON_FOLDER = 'assets/lessons/';
-        trace(LESSON_FOLDER + name);
-        if (FileSystem.exists(LESSON_FOLDER + name) && FileSystem.isDirectory(LESSON_FOLDER + name)) {
-            var dirContents = FileSystem.readDirectory(LESSON_FOLDER + name);
-            LESSON_FOLDER += name;
-            var lessonFile:Dynamic;
-            var pages:Array<String>;
-            var scripts:Array<String>;
 
-            if (FileSystem.exists(LESSON_FOLDER + 'lessonfile')) {
-                lessonFile = cast Json.parse(File.getContent(LESSON_FOLDER + 'lesson.json'));
-            } else {
-                Log.error("Lessonfile for " + name + " not found");
-                return null;
-            }
+    public static function loadLessonFromZipFile(name:String):ZipLessonInfo {
+        
+        var lessonInfo:ZipLessonInfo = {lessonFile: null, scripts: []};
+        var lessonZipFile = 'assets/lessons/$name';
 
-            if (FileSystem.exists(LESSON_FOLDER + 'pages/') && FileSystem.isDirectory(LESSON_FOLDER + 'pages/')) {
-                pages = FileSystem.readDirectory(LESSON_FOLDER + 'pages/');
-            } else {
-                Log.error("Pages folder for " + name + " not found");
-                return null;
+        if (FileSystem.exists(lessonZipFile)) {
+            var entries = ZipTools.getZipEntries(lessonZipFile);
+            for (e in entries) {
+                if (e.fileName != 'scripts/' && e.fileName.startsWith('scripts/')) {
+                    lessonInfo.scripts.push(e);
+                } else if (e.fileName == 'lesson.json') {
+                    lessonInfo.lessonFile = Json.parse(e.data.toString());
+                }
             }
-            if (FileSystem.exists(LESSON_FOLDER + 'scripts/') && FileSystem.isDirectory(LESSON_FOLDER + 'scripts/')) {
-                scripts = FileSystem.readDirectory(LESSON_FOLDER + 'pages/');
-            } else {
-                Log.error("Pages folder for " + name + " not found");
-                return null;
-            }
+        }
 
-            if (lessonFile.start == null || !FileSystem.exists(LESSON_FOLDER + 'pages/' +  lessonFile.start)) {
-                Log.error("Lesson file \"start\" value is invalid");
-                return null;
-            }
+        return lessonInfo;
+    }
 
-            var scriptToRun = Json.parse(File.getContent(LESSON_FOLDER + 'pages/' + lessonFile.start)).script;
-            trace(LESSON_FOLDER + 'scripts/' + scriptToRun);
-            if (FileSystem.exists(LESSON_FOLDER + 'scripts/' + scriptToRun)) {
-                return new LuaScript(LESSON_FOLDER + 'scripts/' + scriptToRun, screen);
-            }
+    public static function loadLessonFromFolder(name:String):DirLessonInfo {
+        var lessonFolder = 'assets/lessons/$name/';
+
+        if (FileSystem.exists(lessonFolder) && FileSystem.isDirectory(lessonFolder) && FileSystem.exists(lessonFolder + 'pages.json')) {
+            return cast Json.parse(File.getContent(lessonFolder + 'pages.json'));
         }
 
         return null;

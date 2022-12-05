@@ -1,3 +1,4 @@
+import screens.LessonScreen;
 import openfl.events.KeyboardEvent;
 import openfl.utils.Object;
 import openfl.text.StyleSheet;
@@ -30,7 +31,7 @@ class Main extends Application {
 
 		instance = this;
 
-		currentScreen = new Screen();
+		currentScreen = new LessonScreen();
 
 		addEventListener(Event.ENTER_FRAME, onEnterFrame);
 		addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
