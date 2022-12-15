@@ -1,5 +1,11 @@
 package luaimpl;
 
+import feathers.events.ButtonBarEvent;
+import feathers.data.ArrayCollection;
+import feathers.controls.ButtonBar;
+import feathers.controls.IToggle;
+import feathers.core.ToggleGroup;
+import feathers.controls.Alert;
 import haxe.Timer;
 import screens.LessonScreen;
 import lime.text.Font;
@@ -22,76 +28,48 @@ import sys.FileSystem;
 
 using StringTools;
 
-class LuaScript
-{
-	public var l:State;
-
+class LuaScript {
+	private var l:State;
 	public var screen:Screen;
+	public var file:String;
+	// References
+	public var refs:Map<String, Dynamic> = [];
 
-	private var references:Map<Int, Dynamic> = [];
-	public var buttons:Map<Button, Int> = [];
-
-	private var REFERENCE_NUMBER:UInt = 0;
-	private var fns:CoreFunctionsLua;
-
-	public function new(?code:String, ?screen:Screen)
-	{
+	public function new(file:String, screen:Screen, refs:Map<String, Dynamic>) {
+		
 		l = LuaL.newstate();
 		LuaL.openlibs(l);
 		Lua.init_callbacks(l);
-
+		
+		this.file = file;
 		this.screen = screen;
+		this.refs = refs;
 
-		fns = new CoreFunctionsLua(this);
-
-		set("lua_version", Lua.version());
-		set("luaJIT_version", Lua.versionJIT());
-		set("haxe_version", haxe.macro.Compiler.getDefine("haxe_ver"));
-
-		set("WIDTH", Main.instance.stage.stageWidth);
-		set("HEIGHT", Main.instance.stage.stageHeight);
-
-		// BASE FUNCTIONS
-		set("instantiate", Lua_Instantiate);
-		set("add", Lua_Add);
-		set("remove", Lua_Remove);
-		set("getProperty", Lua_GetProperty);
-		set("setProperty", Lua_SetProperty);
-		set("setField", Lua_SetFieldUsingID);
-		set("setReference", Lua_SetReference);
-		set("delReference", Lua_DelReference);
-
-	// COOL functions
-
-		set("getX", (id:Int) -> {
-			return Lua_GetProperty(id, "x");
-		});
-
-		set("getY", (id:Int) -> {
-			return Lua_GetProperty(id, "y");
-		});
-
-		set("nextLesson", () -> {
-			LessonScreen.lessonInstance.gotoNextLesson = true;
-		});
-
-		set("createLabel", fns.createLabel);
-		set("createButton", fns.createButton);
-
-        run(code);
+		set("getProperty", lGetProperty);
+		set("setProperty", lSetProperty);
+		set("setField", lSetField);
+		set("__setReference", l__SetReference); // Unsafe function
+		set("__getReference", l__GetReference); // Unsafe function
 	}
 
-	public function run(?code:String)
-	{
-		try
-		{
+	public function run(path:String) {
+		try {
+			if (FileSystem.exists(path))
+				LuaL.dofile(l, path);
+			else Logger.log("Could not find file " + path, "lua");
+		} catch (e) {
+			Logger.error("Could not run Lua file " + path + "! (error: " + e + ")", "lua");
+			Logger.suggest("Check if you have input the path correctly!", "lua");
+		}
+	}
+
+	public function runString(code:String) {
+		try {
 			LuaL.dostring(l, code);
+		} catch (e) {
+			Logger.error("Could not run Lua code! (error: " + e + ")", "lua");
+			Logger.suggest("Check if you have input the path correctly!", "lua");
 		}
-		catch (e)
-		{
-			trace('[luaimpl] could not run!');
-		}
-		
 	}
 
 	public function set<T>(key:String, value:T)
@@ -104,7 +82,7 @@ class LuaScript
 		Convert.toLua(l, value);
 		Lua.setglobal(l, key);
 	}
-
+	
 	public function unset(key:String)
 	{
 		var item = get(key);
@@ -135,7 +113,7 @@ class LuaScript
 
 			if (type != Lua.LUA_TFUNCTION)
 			{
-				trace("[luaimpl] could not call " + name + "! it is not a function! (type: " + type + ")");
+				Logger.error("Could not call function \"" + name + "\"! It is not a function (type: " + type + ")", "lua");
 				Lua.pop(l, 1);
 				return null;
 			}
@@ -147,7 +125,7 @@ class LuaScript
 
 			if (status != Lua.LUA_OK)
 			{
-				trace("[luaimpl] error calling function " + name + "! (status: " + status + ")");
+				Logger.error("Error calling function \"" + name + "\"! (status: " + status + ")", "lua");
 				return null;
 			}
 
@@ -158,7 +136,7 @@ class LuaScript
 		}
 		catch (e)
 		{
-			trace("[luaimpl] error calling function " + name + "!" + "error: " + e.toString());
+			Logger.log("Could not call function \"" + name + "\"! (error: " + e + ")", "lua");
 			return null;
 		}
 	}
@@ -168,69 +146,11 @@ class LuaScript
 		Lua.close(l);
 	}
 
-	// Functions to be used in lua
+	function lGetProperty(id:String, property:String) {
+	if (!property.contains('.'))
+		return Reflect.getProperty(refs.get(id), property);
 
-	// BASE FUNCTIONS
-
-	function Lua_Instantiate(name:String, args:Array<Dynamic>) {
-
-		REFERENCE_NUMBER++;
-
-		switch (name.toLowerCase()) {
-			case 'label':
-				trace("im making lable");
-				var l = new Label();
-				references.set(REFERENCE_NUMBER, l);
-			case 'button':
-				var b:Button;
-				b = new Button();
-				b.addEventListener(TriggerEvent.TRIGGER, (e:TriggerEvent) -> {
-					var button = cast (e.target, Button);
-					var id = buttons.get(button);
-					call("onButtonPress", id);
-				});
-				references.set(REFERENCE_NUMBER, b);
-				buttons.set(b, REFERENCE_NUMBER);
-			case 'bitmap':
-				var i = new Bitmap(references.get(args[0]), null, args[1]);
-				references.set(REFERENCE_NUMBER, i);
-			default:
-				var resolvedClass = Type.resolveClass(name);
-				if (resolvedClass != null && Type.getSuperClass(resolvedClass) == DisplayObject) {
-					var object = Type.createInstance(resolvedClass, args);
-					references.set(REFERENCE_NUMBER, object);
-				} else {
-					REFERENCE_NUMBER--;
-				}
-		}
-		
-		return REFERENCE_NUMBER;
-	}
-
-	public function update(dt:Float) {
-	}
-
-	function Lua_Add(id:Int) {
-		try {
-		screen.items.add(references.get(id));
-		} catch (e) {
-			trace("Failed to add item of ID " + id + "! (error: " + e + ")");
-		}
-	}
-
-	function Lua_Remove(id:Int) {
-		try {
-		screen.items.remove(references.get(id));
-		} catch (e) {
-			trace("Failed to remove item of ID " + id + "! (error: " + e + ")");
-		}
-	}
-
-	function Lua_GetProperty(id:Int, property:String) {
-		if (!property.contains('.'))
-			return Reflect.getProperty(references.get(id), property);
-
-		var object = references.get(id);
+		var object = refs.get(id);
 		var splitted = property.split('.');
 		
 		for (i in 0...splitted.length - 1) {
@@ -240,12 +160,12 @@ class LuaScript
 		return Reflect.getProperty(object, splitted[splitted.length-1]);
 	}
 
-	function Lua_SetProperty(id:Int, property:String, value:Any)  {
+	function lSetProperty(id:String, property:String, value:Any)  {
 		if (!property.contains('.'))
-			return Reflect.setProperty(references.get(id), property, value);
+			return Reflect.setProperty(refs.get(id), property, value);
 		
 
-		var object = references.get(id);
+		var object = refs.get(id);
 		var splitted = property.split('.');
 		
 		for (i in 0...splitted.length - 1) {
@@ -255,97 +175,26 @@ class LuaScript
 		Reflect.setProperty(object, splitted[splitted.length - 1], value);
 	}
 
-	function Lua_SetField(id:Int, field:String, value:Dynamic) {
+	function lSetField(id:String, field:String, id2:String) {
 		if (!field.contains('.'))
-			Reflect.setField(references.get(id), field, value);
+			Reflect.setField(refs.get(id), field, refs.get(id2));
 
-		var object = references.get(id);
+		var object = refs.get(id);
 		var splitted = field.split('.');
 
 		for (i in 0...splitted.length - 1) {
 			object = Reflect.field(object, splitted[i]);
 		}
 
-		Reflect.setField(object, splitted[splitted.length - 1], value);
+		Reflect.setField(object, splitted[splitted.length - 1], refs.get(id2));
 	}
 
-	function Lua_SetFieldUsingID(id:Int, field:String, id2:Int) {
-		if (!field.contains('.'))
-			Reflect.setField(references.get(id), field, references.get(id2));
-
-		var object = references.get(id);
-		var splitted = field.split('.');
-
-		for (i in 0...splitted.length - 1) {
-			object = Reflect.field(object, splitted[i]);
-		}
-
-		Reflect.setField(object, splitted[splitted.length - 1], references.get(id2));
-	}
-
-	function Lua_SetReference(id:Int, value:Dynamic) {
-		references.set(id, value);
+	function l__SetReference(id:String, value:Dynamic) {
+		refs.set(id, value);
 		return id;
 	}
 
-	function Lua_DelReference(id:Int, value:Dynamic) {
-		references.remove(id);
-		return id;
-	}
-}
-class CoreFunctionsLua {
-
-	private var script:LuaScript;
-
-	public function new(script:LuaScript) {
-		this.script = script;
-	}
-
-	public function createLabel(x:Float, y:Float, text:String, size:Int) {
-		incrID();
-		trace("mkeing lable");
-		var l = new Label(text);
-		l.x = x;
-		l.y = y;
-		l.textFormat = new TextFormat("assets/fonts/IBMPlexSans.ttf", size, 0xff000000);
-		setRef(getID(), l);
-		return getID();
-	}
-
-	public function createButton(x:Float, y:Float, text:String, size:Int) {
-		incrID();
-		trace("button");
-		var b:Button;
-		b = new Button(text);
-		b.addEventListener(TriggerEvent.TRIGGER, (e:TriggerEvent) -> {
-			var button = cast (e.target, Button);
-			script.call("onButtonPress", script.buttons.get(button));
-		});
-
-
-		b.x = x;
-		b.y = y;
-		b.textFormat = new TextFormat("assets/fonts/IBMPlexSans.ttf", size, 0xff000000);
-
-		@:privateAccess
-		script.buttons.set(b, getID());
-
-		setRef(getID(), b);
-		return getID();
-	}
-
-	inline function setRef(id:Int, v:Dynamic) {
-		@:privateAccess
-		script.references.set(id, v);
-	}
-
-	inline function getID() {
-		@:privateAccess
-		return script.REFERENCE_NUMBER;
-	}
-
-	inline function incrID() {
-		@:privateAccess
-		script.REFERENCE_NUMBER++;
+	function l__GetReference(id:String) {
+		return refs.get(id);
 	}
 }

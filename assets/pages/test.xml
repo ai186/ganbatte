@@ -1,0 +1,4 @@
+<Lesson>
+    <Checkbox checked="true">Checked</Checkbox>
+    <Checkbox checked="false">Not Checked</Checkbox>
+</Lesson>

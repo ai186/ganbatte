@@ -21,6 +21,14 @@ class Screen {
         items = new Group<DisplayObject>();
     }
 
+    public inline function add(item:DisplayObject) {
+        items.add(item);
+    }
+
+    public inline function remove(item:DisplayObject) {
+        items.remove(item);
+    }
+
     public function update(dt:Float) {
         for (script in scripts) {
             if (script.get("update") != null)

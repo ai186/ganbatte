@@ -1,3 +1,5 @@
+import openfl.display.Graphics;
+import openfl.geom.Point;
 import screens.LessonScreen;
 import openfl.events.KeyboardEvent;
 import openfl.utils.Object;
@@ -26,6 +28,8 @@ class Main extends Application {
 	public static var instance:Main;
 	var s:LuaScript;
 
+	var t:Float;
+	
 	public function new() {
 		super();
 
@@ -37,6 +41,8 @@ class Main extends Application {
 		addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
 		addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
 	}
+
+	var draw = true;
 
 	function onEnterFrame(e:Event) {
 		if (currentScreen != null)
