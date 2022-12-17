@@ -1,5 +1,6 @@
 package luaimpl;
 
+import openfl.display.BitmapData;
 import feathers.events.ButtonBarEvent;
 import feathers.data.ArrayCollection;
 import feathers.controls.ButtonBar;
@@ -29,7 +30,7 @@ import sys.FileSystem;
 using StringTools;
 
 class LuaScript {
-	private var l:State;
+	public var l:State;
 	public var screen:Screen;
 	public var file:String;
 	// References
@@ -47,9 +48,12 @@ class LuaScript {
 
 		set("getProperty", lGetProperty);
 		set("setProperty", lSetProperty);
+		set("callMethod", lCallMethod);
 		set("setField", lSetField);
 		set("__setReference", l__SetReference); // Unsafe function
 		set("__getReference", l__GetReference); // Unsafe function
+		
+		run(file);
 	}
 
 	public function run(path:String) {
@@ -157,6 +161,9 @@ class LuaScript {
 			object = Reflect.field(object, splitted[i]);
 		}
 
+		trace("ZDZDZD");
+		trace(Type.typeof(Reflect.getProperty(object, splitted[splitted.length-1])));
+		trace("ZDZDZD");
 		return Reflect.getProperty(object, splitted[splitted.length-1]);
 	}
 
@@ -173,6 +180,18 @@ class LuaScript {
 		}
 
 		Reflect.setProperty(object, splitted[splitted.length - 1], value);
+	}
+
+	function lCallMethod(id:String, fn:String, args:Array<Any>) {
+		if (!fn.contains('.'))
+			return Reflect.callMethod(refs.get(id), Reflect.field(refs.get(id), fn), args);
+
+		var object = refs.get(id);
+		var splitted = fn.split('.');
+		for (i in 0...splitted.length - 1)
+			object = Reflect.field(object, splitted[i]);
+
+		return Reflect.callMethod(object, Reflect.field(object, splitted[splitted.length -1]), args);
 	}
 
 	function lSetField(id:String, field:String, id2:String) {
@@ -196,5 +215,36 @@ class LuaScript {
 
 	function l__GetReference(id:String) {
 		return refs.get(id);
+	}
+
+	function lInstantiate(component:String, args:Array<Dynamic>, id:String) {
+		switch (component.toLowerCase()) {
+			
+		}
+	}
+
+	function lGetText(id:String){
+		return refs.get(id).text;
+	}
+
+	function lAddToDataProvider(id:String, v:Dynamic) {
+		refs.get(id).dataProvider.add(v);
+	}
+
+	function lRemoveFromDataProvider(id:String, v:Dynamic) {
+		refs.get(id).dataProvider.remove(v);
+	}
+
+	function lRemoveAtFromDataProvider(id:String, idx:Int) {
+		refs.get(id).dataProvider.removeAt(idx);
+	}
+
+	function lGetFromDataProvider(id:String, idx:Int) {
+		return refs.get(id).dataProvider.get(idx);
+	}
+
+	function lLoadImage(id:String, path:String) {
+		var img:Bitmap = refs.get(id);
+		img.bitmapData = BitmapData.fromFile(path);
 	}
 }

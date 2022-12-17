@@ -1,10 +1,17 @@
+function create()
+end
 
-print(-1)
-Ganbatte = dofile('core/Ganbatte.lua')
-print("Hello, world!")
-label = createLabel(0, 0, "Hi!", 16)
-print(1)
-add(label)
-print(2)
-print (Ganbatte.getProperty(label, "text"))
-print(3)
+function update(dt)
+end
+
+function onKeyDown(key)
+end
+
+function onKeyUp(key)
+end
+
+function onButtonTrigger(id)
+end
+
+function onButtonBarTrigger(btnBar, index)
+end

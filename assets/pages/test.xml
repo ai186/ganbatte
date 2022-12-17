@@ -1,4 +1,3 @@
 <Lesson>
-    <Checkbox checked="true">Checked</Checkbox>
-    <Checkbox checked="false">Not Checked</Checkbox>
+    <Label id="Coolio" x="100" y="100" color="0">Hello</Label>
 </Lesson>

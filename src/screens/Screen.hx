@@ -1,5 +1,6 @@
 package screens;
 
+import llua.Convert;
 import haxe.Json;
 import lime.utils.Log;
 import sys.io.File;
@@ -31,22 +32,19 @@ class Screen {
 
     public function update(dt:Float) {
         for (script in scripts) {
-            if (script.get("update") != null)
-                script.call("update", dt);
+            script.call("update", dt);
         }
     }
 
     public function onKeyDown(keyCode:Int) {
         for (script in scripts) {
-            if (script.get("onKeyDown") != null)
-                script.call("onKeyDown", keyCode);
+            script.call("onKeyDown", keyCode);
         }
     }
 
     public function onKeyUp(keyCode:Int) {
         for (script in scripts) {
-            if (script.get("onKeyUp") != null)
-                script.call("onKeyUp", keyCode);
+            script.call("onKeyUp", keyCode);
         }
     }
 

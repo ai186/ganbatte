@@ -1,5 +1,8 @@
 package screens;
 
+import components.Video;
+import feathers.events.ButtonBarEvent;
+import feathers.events.TriggerEvent;
 import feathers.controls.PopUpListView;
 import feathers.controls.Check;
 import feathers.controls.Drawer;
@@ -39,6 +42,7 @@ class LessonScreen extends Screen {
         lessonPageElements.clear();
         buildPage(PageParser.parse(Xml.parse(File.getContent("assets/pages/test.xml"))));
         cast (Theme.fallbackTheme, IDarkModeTheme).darkMode = Preferences.preferences.darkMode;
+        addScript("assets/scripts/test.lua");
     }
 
     static inline var DEFAULT_FONT_SIZE = 16;
@@ -72,7 +76,11 @@ class LessonScreen extends Screen {
                 case 'button':
                     Logger.log("Making button with ID " + el.id, "page/building");
                     var d = el.data;
-                    var b = new Button(el.value);
+                    var b = new Button(el.value, (e:TriggerEvent) -> {
+                        for (s in scripts)
+                            if (s.get("onButtonPress") != null)
+                                s.call("onButtonTrigger", el.id);
+                    });
                     b.x = d["x"];
                     b.y = d["y"];
                     b.textFormat = new TextFormat(d["font"], Std.parseInt(d["fontSize"]), Std.parseInt(d["color"]));
@@ -90,12 +98,17 @@ class LessonScreen extends Screen {
                 case 'buttonbar':
                     Logger.log("Making Button Bar with ID " + el.id, "page/building");    
                     var d = el.data;
-                    var buttonBar = new ButtonBar(new ArrayCollection([]));
+                    var buttonBar = new ButtonBar(new ArrayCollection([]), (e:ButtonBarEvent) -> {
+                        for (s in scripts)
+                            if (s.get("onButtonBarTrigger") != null)
+                                s.call("onButtonBarTrigger", el.id, e.state.index);
+                    });
                     buttonBar.itemToText = (item:Dynamic) -> {
                         return item.text;
                     }
                     buttonBar.x = d["x"];
                     buttonBar.y = d["y"];
+
                     lessonPageElements.set(el.id, buttonBar);
                     add(buttonBar);
                 case 'dataitem' | 'data':
@@ -104,7 +117,7 @@ class LessonScreen extends Screen {
                     switch (p.nodeName.toLowerCase()) {
                         case 'buttonbar':
                             var buttonBar:ButtonBar = cast lessonPageElements.get(p.get("id"));
-                            buttonBar.dataProvider.add({text: el.value});
+                            buttonBar.dataProvider.add({text: el.value});   
                     }
                 case 'textarea':
                     Logger.log("Making Text Area with ID " + el.id, "page/building");
@@ -153,6 +166,7 @@ class LessonScreen extends Screen {
                     var check = new Check(el.value, d["checked"] == "true");
                     check.x = d["x"];
                     check.y = d["y"];
+                    lessonPageElements.set(el.id, check);
                     add(check);
                 case 'dropdown':
                     Logger.log("Making Dropdown with ID " + el.id, "page/building");
@@ -161,6 +175,7 @@ class LessonScreen extends Screen {
                     dropdown.x = d["x"];
                     dropdown.y = d["y"];
                     dropdown.itemToText = (item:Dynamic) -> {return item.text;}
+                    lessonPageElements.set(el.id, dropdown);
                     add(dropdown);
                 default:
                     Logger.error(el.elementType + " is not a valid component!", "page/building");
@@ -169,8 +184,7 @@ class LessonScreen extends Screen {
         }
     }
 
-    public function addScript(path:String) {
+    public inline function addScript(path:String) {
         return scripts.push(new LuaScript(path, this, lessonPageElements));
     }
-    
 }
