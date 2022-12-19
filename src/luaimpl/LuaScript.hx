@@ -159,6 +159,7 @@ class LuaScript {
 	}
 
 	function lGetProperty(id:String, property:String) {
+		try {
 	if (!property.contains('.'))
 		return Reflect.getProperty(refs.get(id), property);
 
@@ -169,13 +170,16 @@ class LuaScript {
 			object = Reflect.field(object, splitted[i]);
 		}
 
-		trace("ZDZDZD");
-		trace(Type.typeof(Reflect.getProperty(object, splitted[splitted.length-1])));
-		trace("ZDZDZD");
 		return Reflect.getProperty(object, splitted[splitted.length-1]);
+	} catch (e) {
+		Logger.error("Error calling lSetProperty @ id " + id + " @ property " + property + ' (error: $e)', "lua");
+	}
+
+	return null;
 	}
 
 	function lSetProperty(id:String, property:String, value:Any)  {
+		try {
 		if (!property.contains('.'))
 			return Reflect.setProperty(refs.get(id), property, value);
 		
@@ -188,9 +192,13 @@ class LuaScript {
 		}
 
 		Reflect.setProperty(object, splitted[splitted.length - 1], value);
+	} catch (e) {
+		Logger.error("Error calling lSetProperty @ id " + id + " @ property " + property + " @ value " + value + ' (error: $e)', "lua");
+	}
 	}
 
 	function lCallMethod(id:String, fn:String, args:Array<Any>) {
+		try {
 		if (!fn.contains('.'))
 			return Reflect.callMethod(refs.get(id), Reflect.field(refs.get(id), fn), args);
 
@@ -200,6 +208,11 @@ class LuaScript {
 			object = Reflect.field(object, splitted[i]);
 
 		return Reflect.callMethod(object, Reflect.field(object, splitted[splitted.length -1]), args);
+		} catch (e) {
+			Logger.error("Error calling lCallMethod @ id " + id + " @ fn " + fn + ' (error: $e)', "lua");
+		}
+
+		return null;
 	}
 
 	function lSetField(id:String, field:String, id2:String) {
@@ -242,8 +255,12 @@ class LuaScript {
 	}
 
 	function lInstantiate(component:String, args:Array<Dynamic>, id:String) {
+		try {
 		switch (component.toLowerCase()) {
 			
+		}
+		} catch (e) {
+			Logger.error("Error calling lInstantiate @ id " + id + ' (error: $e)', "lua");
 		}
 	}
 
@@ -251,7 +268,7 @@ class LuaScript {
 		try {
 		return refs.get(id).text;
 		} catch (e) {
-			Logger.error("Error calling lGetText " + '(error: $e)', "lua");
+			Logger.error("Error calling lGetText @ id" + id + ' (error: $e)', "lua");
 		}
 
 		return null;
