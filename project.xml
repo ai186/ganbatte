@@ -15,7 +15,6 @@
 	<haxelib name="actuate"/>
 	<haxelib name="feathersui"/>
 	<haxelib name="linc_luajit"/>
-	<haxelib name="hxCodec"/>
 
 	<icon path="assets/icons/icon.svg"/>
 </project>

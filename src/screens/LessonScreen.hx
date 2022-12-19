@@ -1,6 +1,5 @@
 package screens;
 
-import components.Video;
 import feathers.events.ButtonBarEvent;
 import feathers.events.TriggerEvent;
 import feathers.controls.PopUpListView;
@@ -41,6 +40,7 @@ class LessonScreen extends Screen {
         items.clear();
         lessonPageElements.clear();
         buildPage(PageParser.parse(Xml.parse(File.getContent("assets/pages/test.xml"))));
+        // because hxCodec is being retarded
         cast (Theme.fallbackTheme, IDarkModeTheme).darkMode = Preferences.preferences.darkMode;
         addScript("assets/scripts/test.lua");
     }

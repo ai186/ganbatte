@@ -50,7 +50,7 @@ class Logger {
         Log.trace('$BLUE[SUGGESTION - ${category}] $message$NO_COLOR');
     }
 
-    private static function deleteOldLogs() {
+    private inline static function deleteOldLogs() {
         if (historyMessageLimit == -1)
             return;
         while (history.length > historyMessageLimit)

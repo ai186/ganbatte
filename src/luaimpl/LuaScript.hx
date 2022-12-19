@@ -1,5 +1,6 @@
 package luaimpl;
 
+import haxe.Constraints.Function;
 import openfl.display.BitmapData;
 import feathers.events.ButtonBarEvent;
 import feathers.data.ArrayCollection;
@@ -52,6 +53,13 @@ class LuaScript {
 		set("setField", lSetField);
 		set("__setReference", l__SetReference); // Unsafe function
 		set("__getReference", l__GetReference); // Unsafe function
+		set("instantiate", lInstantiate);
+		set("addToDataProvider", lAddToDataProvider);
+		set("removeFromDataProvider", lRemoveFromDataProvider);
+		set("removeAtDataProvider", lRemoveAtFromDataProvider);
+		set("getFromDataProvider", lGetFromDataProvider);
+		set("getText", lGetText);
+		set("loadImage", lLoadImage);
 		
 		run(file);
 	}
@@ -209,12 +217,28 @@ class LuaScript {
 	}
 
 	function l__SetReference(id:String, value:Dynamic) {
+		try {
 		refs.set(id, value);
 		return id;
+		} catch (e) {
+			Logger.error("Error calling l__SetReference @ id " + id + ' (error: $e)', "lua");
+			Logger.log("__setReference is an unsafe function! You may be trying to set a reference to something\n
+				that can't be converted to a Haxe datatype/object!", "lua");
+		}
+
+		return null;
 	}
 
 	function l__GetReference(id:String) {
+		try {
 		return refs.get(id);
+		} catch (e) {
+			Logger.error("Error calling l__GetReference @ id " + id + ' (error: $e)', "lua");
+			Logger.log("__getReference is an unsafe function! You may trying to get a reference to something\n
+				that can't be converted to a Lua datatype/object!", "lua");
+		}
+
+		return null;
 	}
 
 	function lInstantiate(component:String, args:Array<Dynamic>, id:String) {
@@ -223,28 +247,56 @@ class LuaScript {
 		}
 	}
 
-	function lGetText(id:String){
+	function lGetText(id:String) {
+		try {
 		return refs.get(id).text;
+		} catch (e) {
+			Logger.error("Error calling lGetText " + '(error: $e)', "lua");
+		}
+
+		return null;
 	}
 
 	function lAddToDataProvider(id:String, v:Dynamic) {
+		try {
 		refs.get(id).dataProvider.add(v);
+		} catch (e) {
+			Logger.error("Error calling lAddToDataProvider @ id " + id + ' (error: $e)', "lua");
+		}
 	}
 
 	function lRemoveFromDataProvider(id:String, v:Dynamic) {
+		try {
 		refs.get(id).dataProvider.remove(v);
+		} catch (e) {
+			Logger.error("Error calling lRemoveFromDataProvider @ id " + id + ' (error: $e)', "lua");
+		}
 	}
 
 	function lRemoveAtFromDataProvider(id:String, idx:Int) {
+		try {
 		refs.get(id).dataProvider.removeAt(idx);
+		} catch (e) {
+			Logger.error("Error calling lRemoveAtFromDataProvider @ id " + id + ' (error: $e)', "lua");
+		}
 	}
 
 	function lGetFromDataProvider(id:String, idx:Int) {
+		try {
 		return refs.get(id).dataProvider.get(idx);
+		} catch (e) {
+			Logger.error("Error calling lGetFromDataProvider @ id " + id + ' (error: $e)', "lua");
+		}
+
+		return null;
 	}
 
 	function lLoadImage(id:String, path:String) {
+		try {
 		var img:Bitmap = refs.get(id);
 		img.bitmapData = BitmapData.fromFile(path);
+		} catch (e) {
+			Logger.error("Error calling lLoadImage @ id " + id + ' (error: $e)', "lua");
+		}
 	}
 }
